@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Click the Box Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden; /* Remove scrolling */
+            background: linear-gradient(to right, #00c6ff, #0072ff);
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            height: 100vh;
+            width: 100%;
+            text-align: center;
+        }
+
+        .message {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .difficulty-btns {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .difficulty-btn {
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            margin: 0 10px;
+            border-radius: 5px;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            transition: 0.3s;
+        }
+
+        .difficulty-btn:hover {
+            background-color: #e65100;
+        }
+
+        .game-box {
+            width: 100px;
+            height: 100px;
+            background-color: #00FFFF; /* Neon Blue */
+            margin: 10px;
+            display: inline-block;
+            border-radius: 5px;
+            cursor: pointer;
+            position: absolute;
+            transition: left 0.3s, top 0.3s;
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .star-shape {
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-bottom: 45px solid #ffeb3b;
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            transform: rotate(35deg);
+            transform-origin: bottom;
+        }
+
+        .score {
+            font-size: 24px;
+            font-weight: bold;
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffeb3b;
+        }
+
+        .timer {
+            font-size: 18px;
+            font-weight: bold;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #ffffff;
+        }
+
+        .game-over {
+            font-size: 30px;
+            font-weight: bold;
+            color: red;
+            display: none;
+        }
+
+        .play-again-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            display: none;
+            transition: 0.3s;
+        }
+
+        .play-again-btn:hover {
+            background-color: #388e3c;
+        }
+
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            transition: 0.3s;
+        }
+
+        .back-btn:hover {
+            background-color: #e64a19;
+        }
+
+        .high-score {
+            font-size: 20px;
+            margin-top: 20px;
+            color: #ffeb3b;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div class="message" id="gameMessage">Welcome to the "Click the Box" Game! Choose Difficulty:</div>
+
+        <!-- High Score Section -->
+        <div class="high-score" id="highScore"></div>
+
+        <!-- Difficulty Buttons -->
+        <div class="difficulty-btns" id="difficultyButtons">
+            <button class="difficulty-btn" onclick="startGame('easy')">Easy</button>
+            <button class="difficulty-btn" onclick="startGame('medium')">Medium</button>
+            <button class="difficulty-btn" onclick="startGame('hard')">Hard</button>
+        </div>
+
+        <!-- Instruction Section -->
+        <div class="instruction" id="instruction" style="font-size: 18px; margin-top: 20px;">
+            Instructions: Click on the box as quickly as possible. The box will move randomly around the screen. Try to score as high as you can within the given time!
+        </div>
+
+        <!-- Game Box -->
+        <div class="game-box" id="gameBox" style="display: none;"></div>
+        <div class="star-shape" id="starShape" style="display: none;"></div>
+
+        <!-- Game Over and Play Again Button -->
+        <div class="game-over" id="gameOver">Game Over!</div>
+        <button class="play-again-btn" id="playAgain" style="display: none;" onclick="resetGame()">Play Again</button>
+
+    </div>
+
+    <!-- Score and Timer -->
+    <div class="score" id="score" style="display: none;">Score: 0</div>
+    <div class="timer" id="timer" style="display: none;">Time Left: 30</div>
+
+    <!-- Back Button -->
+    <button class="back-btn" id="backButton" onclick="resetGame()">Back</button>
+
+    <script>
+        // Game Variables
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let gameTimer;
+        let gameInterval;
+        let timeLeft = 30;
+        let boxSize = 100;
+        let boxSpeed = 1000;
+        let gameActive = false;
+        let gameStarted = false; // Flag to track if game has started
+        let boxShape = 'square';
+
+        const gameBox = document.getElementById('gameBox');
+        const starShape = document.getElementById('starShape');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const gameOverDisplay = document.getElementById('gameOver');
+        const playAgainButton = document.getElementById('playAgain');
+        const gameMessage = document.getElementById('gameMessage');
+        const difficultyButtons = document.getElementById('difficultyButtons');
+        const highScoreDisplay = document.getElementById('highScore');
+        const backButton = document.getElementById('backButton');
+        const instruction = document.getElementById('instruction');
+
+        // Update High Score
+        function updateHighScore() {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                highScoreDisplay.textContent = 'High Score: ' + highScore;
+                highScoreDisplay.style.display = 'block';
+            }
+        }
+
+        // Random Box Position
+        function moveBox() {
+            const maxX = window.innerWidth - boxSize - 50;
+            const maxY = window.innerHeight - boxSize - 100;
+
+            const randomX = Math.random() * maxX;
+            const randomY = Math.random() * maxY;
+
+            gameBox.style.left = randomX + 'px';
+            gameBox.style.top = randomY + 'px';
+            starShape.style.left = randomX + 'px';
+            starShape.style.top = randomY + 'px';
+        }
+
+        // Update Score
+        function updateScore() {
+            score++;
+            scoreDisplay.textContent = 'Score: ' + score;
+        }
+
+        // Timer Countdown
+        function countdownTimer() {
+            timeLeft--;
+            timerDisplay.textContent = 'Time Left: ' + timeLeft;
+            if (timeLeft <= 0) {
+                clearInterval(gameInterval);
+                gameOver();
+            }
+        }
+
+        // Game Over Function
+        function gameOver() {
+            gameActive = false;
+            updateHighScore();
+            gameMessage.textContent = 'Game Over! Your Score: ' + score;
+            gameOverDisplay.style.display = 'block';
+            playAgainButton.style.display = 'block';
+        }
+
+        // Start the Game
+        function startGame(difficulty) {
+            // Hide difficulty buttons and show game elements
+            difficultyButtons.style.display = 'none';
+            gameBox.style.display = 'inline-block';
+            scoreDisplay.style.display = 'block';
+            timerDisplay.style.display = 'block';
+            instruction.style.display = 'none'; // Hide instructions when game starts
+            gameMessage.style.display = 'none';
+
+            // Set difficulty levels
+            if (difficulty === 'medium') {
+                boxSize = 80;
+                boxSpeed = 800;
+                boxShape = 'circle';
+                starShape.style.display = 'none';
+            } else if (difficulty === 'hard') {
+                boxSize = 25;  // Hard level ka box ab 25px hoga
+                boxSpeed = 600;
+                boxShape = 'star';
+                gameBox.style.display = 'none';
+                starShape.style.display = 'block';
+            } else {
+                boxShape = 'square';
+                starShape.style.display = 'none';
+            }
+
+            // Reset the game
+            score = 0;
+            timeLeft = 30;
+            gameActive = true;
+            gameStarted = false; // Game hasn't started yet
+            gameOverDisplay.style.display = 'none';
+            playAgainButton.style.display = 'none';
+            scoreDisplay.style.color = 'black';
+            gameMessage.textContent = 'Click the Box!';
+            moveBox();
+
+            // Start countdown timer
+            gameInterval = setInterval(countdownTimer, 1000);
+        }
+
+        // Click Box Event
+        gameBox.addEventListener('click', function() {
+            if (gameActive) {
+                if (!gameStarted) {
+                    gameStarted = true; // Game starts after first click
+                    moveBox(); // Move the box
+                }
+                updateScore();
+                moveBox();
+            }
+        });
+
+        // Click Star Event
+        starShape.addEventListener('click', function() {
+            if (gameActive) {
+                if (!gameStarted) {
+                    gameStarted = true; // Game starts after first click
+                    moveBox(); // Move the star
+                }
+                updateScore();
+                moveBox();
+            }
+        });
+
+        // Reset the Game
+        function resetGame() {
+            gameMessage.textContent = 'Welcome to the "Click the Box" Game! Choose Difficulty:';
+            difficultyButtons.style.display = 'block';
+            gameBox.style.display = 'none';
+            starShape.style.display = 'none';
+            scoreDisplay.style.display = 'none';
+            timerDisplay.style.display = 'none';
+            gameOverDisplay.style.display = 'none';
+            playAgainButton.style.display = 'none';
+            score = 0;
+            timeLeft = 30;
+            clearInterval(gameInterval);
+            highScoreDisplay.style.display = 'none';
+            instruction.style.display = 'block'; // Show instructions when game is reset
+        }
+
+    </script>
+
+</body>
+</html>
